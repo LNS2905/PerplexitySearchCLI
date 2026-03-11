@@ -27,38 +27,48 @@ Answer with confidence disclaimer
 
 ## Query Formulation
 
-Be specific, not conversational — keywords beat prose. Front-load important terms, include version + year, use domain terminology.
+Perplexity is an **AI search engine** — your query is a prompt, not just keywords. You can combine search terms with format instructions to control the output.
 
-| Type | Pattern | Example |
-|------|---------|---------|
-| Release | `<tool> <ver> changelog <year>` | `Bun 1.2 changelog 2025` |
-| Error | `"<exact error>" <tool> <ver>` | `"ECONNRESET" Prisma PostgreSQL Docker` |
-| API docs | `<tool> <ver> <API> docs` | `Tailwind v4 @theme directive docs` |
-| Comparison | `<A> vs <B> <criteria> <year>` | `Drizzle vs Prisma performance 2025` |
-| Migration | `<tool> <old> to <new> breaking` | `Next.js 14 to 15 breaking changes` |
-| Bug/issue | `<tool> <symptom> fix site:github.com` | `Prisma pool timeout fix site:github.com` |
-| Solution | `<problem> solution options <context>` | `git worktree Windows lock EPERM solution options` |
-| News | `<topic> latest` + `--recency day` | `AI regulation EU latest` |
+### Structure: `<search terms>. <format directive>`
 
-## Processing Search Output
+Append a format directive after the search keywords to get compact, structured output:
 
-Search output contains `## Answer`, `## Sources`, `## Meta`. The answer section holds the synthesized information — that's the primary data. Sources and Meta are supplementary.
-
-**Token-efficient extraction rules:**
-- **Extract only what you need** from the answer. Don't paste the entire output to the user — synthesize it into your response, citing source numbers inline like [1][3].
-- **Sources are for citation, not reading.** The answer already synthesizes source content. Only follow source URLs if the answer is insufficient or contradictory.
-- **Limit sources** with `--limit 3-5` when you only need a quick fact. Default returns up to 15 sources which wastes tokens for simple lookups.
-- **Use `--json`** only when you need to programmatically parse the result (e.g., extracting URLs for follow-up fetches). Text mode is ~30% more token-efficient for reading.
-- **Discard Meta section** from your reasoning — it exists for debugging, not for answering the user.
-
-**Summarization pattern:**
 ```
-1. Run search → receive output
-2. Read the ## Answer section
-3. Extract relevant facts + note source numbers [N]
-4. Synthesize into your response with inline citations
-5. Only quote source URLs if user explicitly asks for links
+<keywords + version + year>. Answer in bullet points, max 150 words, cite sources inline.
 ```
+
+### Format directives (append to any query)
+
+| Directive | When to use | Example suffix |
+|-----------|-------------|----------------|
+| `Answer concisely in bullets` | Quick factual lookups | `Bun 1.2 changelog 2025. List key changes in bullets, max 100 words` |
+| `Compare in a table` | A vs B decisions | `Drizzle vs Prisma 2025. Compare in table: performance, DX, edge support` |
+| `List top N options` | Solution search | `React state management 2025. List top 5 options with one-line tradeoff each` |
+| `Steps only, no explanation` | How-to procedures | `Deploy Bun app to Fly.io. Steps only, numbered, no explanation` |
+| `Yes/no then brief reason` | Verification queries | `Does Bun 1.2 support node:http2? Yes/no then brief reason with source` |
+| `Code example only` | API usage lookup | `Hono framework JWT middleware. Show minimal code example only` |
+
+### Query type patterns
+
+| Type | Pattern |
+|------|---------|
+| Release | `<tool> <ver> changelog <year>. Key changes in bullets` |
+| Error | `"<exact error>" <tool> <ver>. Root cause and fix, concise` |
+| API docs | `<tool> <ver> <API> usage. Show code example` |
+| Comparison | `<A> vs <B> <year>. Compare in table: <criteria>` |
+| Migration | `<tool> <old> to <new> breaking changes. List as checklist` |
+| Bug/issue | `<tool> <symptom> fix site:github.com. Steps to resolve` |
+| Solution | `<problem> <context>. List top 3 solutions with tradeoffs` |
+
+## Processing Output
+
+Output has `## Answer`, `## Sources`, `## Meta`. Answer is the primary data; sources/meta are supplementary.
+
+- **Extract → synthesize → cite inline.** Read Answer, extract relevant facts, weave into your response with `[1][3]` citations. Don't paste raw output to user.
+- **Sources are for citation only.** Answer already synthesizes them. Follow URLs only if answer is insufficient.
+- **Use `--limit 3-5`** for simple lookups. Default 15 sources wastes tokens for quick facts.
+- **Text mode > `--json`** (~30% fewer tokens). Only use `--json` when programmatically parsing URLs.
+- **Discard Meta** — it's for debugging, not reasoning.
 
 ## Parallel Search
 
