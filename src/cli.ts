@@ -7,7 +7,7 @@ import { runSearch } from "./commands/search.js";
 import { createPrompts } from "./auth/prompts.js";
 import { authenticate } from "./auth/login.js";
 import { loadToken, clearToken } from "./auth/storage.js";
-import { resolveUpstreamPath, resolveUpstreamModules } from "./upstream/resolve.js";
+import { resolveUpstreamPath, resolveUpstreamModules, saveUpstreamConfig } from "./upstream/resolve.js";
 import { loadUpstreamAdapter } from "./upstream/adapter.js";
 import { UpstreamError } from "./upstream/contracts.js";
 
@@ -194,6 +194,14 @@ Environment variables:
   PI_PERPLEXITY_EMAIL          Pre-fill email for OTP login
   PI_PERPLEXITY_OTP            Pre-fill OTP code
 
+Upstream resolution (in order):
+  1. --upstream flag
+  2. PI_PERPLEXITY_UPSTREAM_DIR env var
+  3. Saved config (~/.config/pplx-wrapper/config.json)
+  4. Auto-discover from common locations (sibling dirs, ~/Code, C:\\Code, etc.)
+
+  Tip: run "pplx-wrapper status --upstream /path" once to save the path permanently.
+
 Exit codes:
   0   Success
   1   Runtime failure (network, API, stream error)
@@ -250,6 +258,15 @@ async function runStatus(upstream: string | undefined): Promise<number> {
   if (upstreamCheck.error) {
     process.stderr.write(upstreamCheck.error + "\n");
     return EXIT_AUTH_SETUP;
+  }
+
+  // If upstream was explicitly provided and valid, save for future auto-resolve
+  if (upstream && upstreamCheck.status === "ready") {
+    try {
+      saveUpstreamConfig(upstream);
+    } catch {
+      // non-fatal
+    }
   }
 
   const info: StatusInfo = {
