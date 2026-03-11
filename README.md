@@ -119,9 +119,20 @@ cd /your/path/to/pi-perplexity && bun link
 
 ### Search
 
+Perplexity is an **AI search engine** — your query is a prompt, not just keywords. You can append format instructions to control the output:
+
 ```bash
-# Basic search — no --upstream needed!
+# Basic search
 pplx-wrapper search --query "latest Bun 1.2 features"
+
+# With format directive — get concise structured output
+pplx-wrapper search --query "Drizzle vs Prisma 2025. Compare in table: performance, DX, edge support"
+
+# Bullet-point summary
+pplx-wrapper search --query "Next.js 15 breaking changes. List as checklist, max 150 words"
+
+# Code example
+pplx-wrapper search --query "Hono JWT middleware. Show minimal code example only"
 
 # With recency filter and source limit
 pplx-wrapper search --query "React 19 release" --recency week --limit 5
@@ -129,6 +140,17 @@ pplx-wrapper search --query "React 19 release" --recency week --limit 5
 # JSON output for programmatic use
 pplx-wrapper search --query "TypeScript 5.8 changes" --json
 ```
+
+#### Format directive examples
+
+| Directive | Use case |
+|-----------|----------|
+| `Answer concisely in bullets, max 100 words` | Quick factual lookups |
+| `Compare in table: <columns>` | A vs B decisions |
+| `List top N options with one-line tradeoff each` | Solution search |
+| `Steps only, numbered, no explanation` | How-to procedures |
+| `Yes/no then brief reason with source` | Verification |
+| `Show minimal code example only` | API usage |
 
 ### Login / Logout / Status
 
