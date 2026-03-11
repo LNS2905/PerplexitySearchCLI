@@ -10,8 +10,10 @@ Use `pplx-wrapper` to run real-time web searches via a Perplexity Pro/Max subscr
 ## Prerequisites
 
 1. **Bun** runtime installed and on `PATH`.
-2. `PI_PERPLEXITY_UPSTREAM_DIR` environment variable set, or pass `--upstream <path>` on every call.
+2. A local checkout of `pi-perplexity` somewhere on the machine (auto-discovered — no manual config needed in most cases).
 3. A cached auth token — run `pplx-wrapper login` once in an interactive terminal.
+
+> **Note:** The CLI auto-discovers the upstream `pi-perplexity` checkout by scanning sibling directories, Bun global links, and home directory. No `--upstream` flag or `PI_PERPLEXITY_UPSTREAM_DIR` needed unless auto-discovery fails.
 
 ---
 

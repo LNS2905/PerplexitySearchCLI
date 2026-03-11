@@ -9,7 +9,7 @@ Standalone CLI wrapper for Perplexity web search. Uses your Perplexity Pro/Max s
 ```
 pplx-wrapper (this repo)
     │
-    └── dynamically imports at runtime ──► pi-perplexity (local checkout)
+    └── dynamically imports at runtime ──► pi-perplexity (auto-discovered)
                                               ├── src/auth/login.ts
                                               ├── src/search/client.ts
                                               └── src/search/format.ts
@@ -26,33 +26,44 @@ pplx-wrapper (this repo)
 git clone https://github.com/LNS2905/PerplexitySearchCLI.git
 cd PerplexitySearchCLI
 bun install
+bun link   # makes pplx-wrapper available globally
 ```
 
 ## Setup
 
 ### 1. Clone the upstream repository
 
+Clone `pi-perplexity` **anywhere on your machine** — the wrapper will find it automatically:
+
 ```bash
 git clone https://github.com/ivanrvpereira/pi-perplexity.git
 cd pi-perplexity && bun install
 ```
 
-### 2. Configure the upstream path
+> **Recommended:** clone it as a sibling of this repo (same parent directory) for instant auto-discovery.
 
-Set the environment variable (add to `.bashrc`/`.zshrc`):
+### 2. Verify setup
 
 ```bash
-export PI_PERPLEXITY_UPSTREAM_DIR="/absolute/path/to/pi-perplexity"
+pplx-wrapper status
 ```
 
-Or pass `--upstream /path/to/pi-perplexity` on every command.
+Expected output:
+```
+bun: available
+upstream: ready      ← auto-discovered!
+token: missing
+interactive: yes
+```
+
+If `upstream: missing`, see [Upstream Resolution](#upstream-resolution) below.
 
 ### 3. Authenticate
 
 Run once in an interactive terminal:
 
 ```bash
-bun run src/cli.ts login
+pplx-wrapper login
 ```
 
 This caches your Perplexity JWT at `~/.config/pi-perplexity/auth.json` (mode `0600`).
@@ -63,12 +74,49 @@ This caches your Perplexity JWT at `~/.config/pi-perplexity/auth.json` (mode `06
 2. **macOS desktop app** — extracts token from the Perplexity desktop app via `defaults read` (skip with `PI_AUTH_NO_BORROW=1`)
 3. **Email OTP** — interactive: prompts for email and OTP code; non-interactive: reads `PI_PERPLEXITY_EMAIL` and `PI_PERPLEXITY_OTP` from env
 
+## Upstream Resolution
+
+The CLI **automatically discovers** the `pi-perplexity` checkout — no manual configuration needed in most cases.
+
+### Discovery chain (in priority order)
+
+| # | Source | When it's used |
+|---|--------|---------------|
+| 1 | `--upstream <path>` flag | Explicit override per command |
+| 2 | `PI_PERPLEXITY_UPSTREAM_DIR` env var | Explicit override for session/system |
+| 3 | Saved config (`~/.config/pplx-wrapper/config.json`) | Cached from first successful discovery |
+| 4 | **Walk-up sibling scan** | Walks up from wrapper dir & CWD, checks sibling directories at each level |
+| 5 | **Bun global link** | Checks `~/.bun/install/global/node_modules/pi-perplexity` |
+| 6 | **npm global** | Checks `npm root -g` for pi-perplexity |
+| 7 | **Home directory scan** | Scans `~/*` for any folder containing pi-perplexity |
+
+The first successful discovery is **automatically cached** to `~/.config/pplx-wrapper/config.json`, so scanning only runs once.
+
+### If auto-discovery fails
+
+Pick any one:
+
+```bash
+# Option A: Clone pi-perplexity as a sibling directory (recommended)
+cd "$(dirname /path/to/PerplexitySearchCLI)"
+git clone https://github.com/ivanrvpereira/pi-perplexity.git
+
+# Option B: Point to existing checkout (saved permanently)
+pplx-wrapper status --upstream /your/path/to/pi-perplexity
+
+# Option C: Set env var
+export PI_PERPLEXITY_UPSTREAM_DIR=/your/path/to/pi-perplexity
+
+# Option D: Bun-link it from the upstream repo
+cd /your/path/to/pi-perplexity && bun link
+```
+
 ## Usage
 
 ### Search
 
 ```bash
-# Basic search
+# Basic search — no --upstream needed!
 pplx-wrapper search --query "latest Bun 1.2 features"
 
 # With recency filter and source limit
@@ -76,9 +124,6 @@ pplx-wrapper search --query "React 19 release" --recency week --limit 5
 
 # JSON output for programmatic use
 pplx-wrapper search --query "TypeScript 5.8 changes" --json
-
-# Explicit upstream path
-pplx-wrapper search --query "test" --upstream /path/to/pi-perplexity
 ```
 
 ### Login / Logout / Status
@@ -107,14 +152,14 @@ pplx-wrapper status             # Print readiness diagnostics
 | `--recency <period>` | Filter by age: `hour`, `day`, `week`, `month`, `year` |
 | `--limit <N>` | Max sources to include (1–50) |
 | `--json` | Output JSON instead of text |
-| `--upstream <path>` | Override upstream checkout path |
+| `--upstream <path>` | Override auto-discovered upstream path |
 
 ### Login flags
 
 | Flag | Description |
 |------|-------------|
 | `--force` | Clear cached token before login |
-| `--upstream <path>` | Override upstream checkout path |
+| `--upstream <path>` | Override auto-discovered upstream path |
 
 ## Output Format
 
@@ -158,7 +203,7 @@ Model: <display_model>
 
 | Variable | Description |
 |----------|-------------|
-| `PI_PERPLEXITY_UPSTREAM_DIR` | Path to local pi-perplexity checkout (required unless `--upstream` is passed) |
+| `PI_PERPLEXITY_UPSTREAM_DIR` | Override upstream path (optional — auto-discovery handles most cases) |
 | `PI_AUTH_NO_BORROW` | Set to `1` to skip macOS desktop app token extraction |
 | `PI_PERPLEXITY_EMAIL` | Pre-fill email for OTP login (non-interactive) |
 | `PI_PERPLEXITY_OTP` | Pre-fill OTP code (non-interactive) |
@@ -167,8 +212,8 @@ Model: <display_model>
 
 Pre-built skill files for AI coding agents are included:
 
-- **OpenCode**: `skills/opencode/perplexity-search.md` — copy to your OpenCode skills directory
-- **Claude Code**: `skills/claude-code/perplexity-search.md` — copy to `.claude/commands/` or reference in `CLAUDE.md`
+- **OpenCode**: `skills/opencode/SKILL.md` — copy to `~/.config/opencode/skills/perplexity-search/SKILL.md`
+- **Claude Code**: `skills/claude-code/SKILL.md` — copy to `~/.claude/plugins/.../perplexity-search/skills/perplexity-search/SKILL.md`
 
 See `docs/host-setup/opencode.md` and `docs/host-setup/claude-code.md` for detailed integration guides.
 
@@ -182,7 +227,7 @@ bun test
 bunx tsc --noEmit
 
 # Run CLI directly
-bun run src/cli.ts search --query "test" --upstream /path/to/pi-perplexity
+bun run src/cli.ts search --query "test"
 ```
 
 ## License
