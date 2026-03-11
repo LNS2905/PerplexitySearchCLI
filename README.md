@@ -70,9 +70,13 @@ This caches your Perplexity JWT at `~/.config/pi-perplexity/auth.json` (mode `06
 
 #### Auth strategies (tried in order)
 
-1. **Cached token** — reuses `~/.config/pi-perplexity/auth.json` if valid
-2. **macOS desktop app** — extracts token from the Perplexity desktop app via `defaults read` (skip with `PI_AUTH_NO_BORROW=1`)
+1. **Cached token** — reuses `~/.config/pi-perplexity/auth.json`
+2. **macOS desktop app only** — on macOS, extracts token from the Perplexity desktop app via `defaults read` (skip with `PI_AUTH_NO_BORROW=1`)
 3. **Email OTP** — interactive: prompts for email and OTP code; non-interactive: reads `PI_PERPLEXITY_EMAIL` and `PI_PERPLEXITY_OTP` from env
+
+**Important:**
+- Desktop token borrowing is currently **macOS-only**. Installing the Perplexity desktop app on Windows does **not** enable automatic token borrowing with the current implementation.
+- Tokens are **not auto-refreshed proactively**. If a cached token becomes stale/expired, `pplx-wrapper search` now clears the stale cache, re-authenticates once, and retries automatically. If that recovery path also fails, you'll need to run `pplx-wrapper login` again interactively.
 
 ## Upstream Resolution
 

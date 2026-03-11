@@ -313,6 +313,7 @@ async function main(): Promise<void> {
           return loadUpstreamAdapter(resolved);
         },
         loadToken,
+        clearToken,
       });
       process.exit(code);
       break;

@@ -39,13 +39,13 @@ The query determines result quality. Be specific, not conversational — keyword
 | Migration | `<tool> migrate <old> to <new> breaking` | `Next.js 14 to 15 breaking changes` |
 | Bug/issue | `<tool> <symptom> workaround site:github.com` | `Prisma pool timeout workaround site:github.com` |
 | News | `<topic> latest` + `--recency day` | `AI regulation EU latest --recency week` |
-| Vietnamese | Vietnamese keywords naturally | `giá vàng SJC hôm nay --recency day` |
+| Solution search | `<problem> solution options tradeoffs <tech/context>` | `Windows git worktree lock removal solution options EPERM EBUSY` |
 
 ## Parallel Search
 
 For complex topics, decompose into 2-4 independent sub-queries and run ALL in parallel (multiple Bash calls in one message). Synthesize across results afterward.
 
-**When:** 2+ facets, cross-verification needed, multiple domains (code + docs + community).
+**When:** 2+ facets, cross-verification needed, multiple domains (code + docs + community), or user asks how to solve/design/improve something but doesn't know which approach to choose.
 
 **Example — "Should I use Drizzle or Prisma for Next.js 15?":**
 ```bash

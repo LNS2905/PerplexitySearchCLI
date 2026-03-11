@@ -11,6 +11,20 @@ export interface SearchDeps {
   writeError: (text: string) => void;
   loadAdapter: (upstreamPath?: string) => Promise<UpstreamAdapter>;
   loadToken: () => Promise<StoredToken | null>;
+  clearToken: () => Promise<void>;
+}
+
+function looksLikeAuthFailure(error: unknown): boolean {
+  const message = error instanceof Error ? error.message : String(error);
+  const normalized = message.toLowerCase();
+  return (
+    normalized.includes("401") ||
+    normalized.includes("403") ||
+    normalized.includes("unauthorized") ||
+    normalized.includes("forbidden") ||
+    normalized.includes("auth") ||
+    normalized.includes("token")
+  );
 }
 
 export async function runSearch(cmd: SearchCommand, deps: SearchDeps): Promise<number> {
@@ -47,8 +61,25 @@ export async function runSearch(cmd: SearchCommand, deps: SearchDeps): Promise<n
     if (cmd.limit !== undefined) params.limit = cmd.limit;
     result = await adapter.search(params, jwt);
   } catch (e) {
-    deps.writeError(`Search failed: ${e instanceof Error ? e.message : String(e)}\n`);
-    return EXIT_FAILURE;
+    if (cached && looksLikeAuthFailure(e)) {
+      try {
+        await deps.clearToken();
+        const auth = await adapter.authenticate({});
+        jwt = auth.access;
+
+        const retryParams: { query: string; recency?: "hour" | "day" | "week" | "month" | "year"; limit?: number } = { query: cmd.query };
+        if (cmd.recency !== undefined) retryParams.recency = cmd.recency;
+        if (cmd.limit !== undefined) retryParams.limit = cmd.limit;
+
+        result = await adapter.search(retryParams, jwt);
+      } catch (retryError) {
+        deps.writeError(`Authentication failed: ${retryError instanceof Error ? retryError.message : String(retryError)}\n`);
+        return EXIT_AUTH_SETUP;
+      }
+    } else {
+      deps.writeError(`Search failed: ${e instanceof Error ? e.message : String(e)}\n`);
+      return EXIT_FAILURE;
+    }
   }
 
   if (cmd.format === "json") {

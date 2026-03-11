@@ -2,7 +2,7 @@ import { describe, expect, it } from "bun:test";
 import { renderSearchOutput } from "../src/output/text";
 import { renderJsonOutput } from "../src/output/json";
 import { runSearch, type SearchDeps } from "../src/commands/search";
-import type { WrapperSearchResult, UpstreamAdapter } from "../src/upstream/contracts";
+import type { WrapperSearchResult } from "../src/upstream/contracts";
 
 const FIXTURE_RESULT: WrapperSearchResult = {
   answer: "Fixture answer for: demo",
@@ -28,6 +28,7 @@ function makeDeps(overrides?: Partial<SearchDeps>): SearchDeps & { stdout: strin
       format: () => FIXTURE_FORMATTED,
     }),
     loadToken: async () => ({ type: "oauth" as const, access: "cached-jwt" }),
+    clearToken: async () => {},
     ...overrides,
   };
 }
@@ -183,5 +184,75 @@ describe("runSearch", () => {
     expect(capturedParams?.query).toBe("test q");
     expect(capturedParams?.recency).toBe("week");
     expect(capturedParams?.limit).toBe(5);
+  });
+
+  it("re-authenticates and retries once when cached token is stale", async () => {
+    let cleared = false;
+    let authenticated = false;
+    let searchCalls = 0;
+
+    const deps = makeDeps({
+      loadToken: async () => ({ type: "oauth" as const, access: "stale-jwt" }),
+      clearToken: async () => {
+        cleared = true;
+      },
+      loadAdapter: async () => ({
+        authenticate: async () => {
+          authenticated = true;
+          return { type: "oauth" as const, access: "fresh-jwt" };
+        },
+        search: async (_params, jwt) => {
+          searchCalls += 1;
+          if (searchCalls === 1 && jwt === "stale-jwt") {
+            throw new Error("401 Unauthorized");
+          }
+          if (jwt !== "fresh-jwt") {
+            throw new Error(`unexpected jwt: ${jwt}`);
+          }
+          return FIXTURE_RESULT;
+        },
+        format: () => FIXTURE_FORMATTED,
+      }),
+    });
+
+    const code = await runSearch(
+      { command: "search", query: "demo", recency: undefined, limit: undefined, format: "text", upstream: undefined },
+      deps,
+    );
+
+    expect(code).toBe(0);
+    expect(cleared).toBe(true);
+    expect(authenticated).toBe(true);
+    expect(searchCalls).toBe(2);
+    expect(deps.stdout.join("")).toContain("## Answer");
+  });
+
+  it("returns auth/setup error when stale token retry also cannot authenticate", async () => {
+    let cleared = false;
+
+    const deps = makeDeps({
+      loadToken: async () => ({ type: "oauth" as const, access: "stale-jwt" }),
+      clearToken: async () => {
+        cleared = true;
+      },
+      loadAdapter: async () => ({
+        authenticate: async () => {
+          throw new Error("desktop + otp unavailable");
+        },
+        search: async () => {
+          throw new Error("403 Forbidden");
+        },
+        format: () => FIXTURE_FORMATTED,
+      }),
+    });
+
+    const code = await runSearch(
+      { command: "search", query: "demo", recency: undefined, limit: undefined, format: "text", upstream: undefined },
+      deps,
+    );
+
+    expect(code).toBe(2);
+    expect(cleared).toBe(true);
+    expect(deps.stderr.join("")).toContain("desktop + otp unavailable");
   });
 });
